@@ -5,36 +5,32 @@ namespace WideAngleCamera;
 public class CameraManager : MonoBehaviour {
 	public static CameraManager Instance;
 
-	public Camera orig;
-
-	public Camera front;
-	public Camera back;
-	public Camera right;
-	public Camera left;
-	public Camera up;
-	public Camera down;
+	private Camera front;
+	private Camera back;
+	private Camera left;
+	private Camera right;
+	private Camera down;
+	private Camera up;
 
 	private RenderTexture cubemap;
+	private Material screen;
 
 	private void Awake() {
-		orig = Camera.main;
+		Instance = this;
+
 		front = transform.Find("Front").GetComponent<Camera>();
 		back = transform.Find("Back").GetComponent<Camera>();
 		left = transform.Find("Left").GetComponent<Camera>();
 		right = transform.Find("Right").GetComponent<Camera>();
 		down = transform.Find("Down").GetComponent<Camera>();
 		up = transform.Find("Up").GetComponent<Camera>();
-	
-		back.gameObject.SetActive(true);
 
 		cubemap = new RenderTexture(512, 512, 16);
 		cubemap.dimension = UnityEngine.Rendering.TextureDimension.Cube;
 
-		SetupCams();
-
-		var screen = transform.parent.Find("Projector Screen").GetComponent<MeshRenderer>();
-		screen.material.mainTexture = cubemap;
-		screen.material.SetFloat("_FOV", WideAnglePlugin.Instance.FieldOfView.Value);
+		screen = transform.parent.Find("Projector Screen").GetComponent<MeshRenderer>().material;
+		screen.mainTexture = cubemap;
+		FOV = WideAnglePlugin.Instance.FieldOfView.Value;
 	}
 
 	private void Update() {
@@ -44,20 +40,29 @@ public class CameraManager : MonoBehaviour {
 		Graphics.CopyTexture(left.targetTexture, 0, cubemap, 1);
 		Graphics.CopyTexture(up.targetTexture, 0, cubemap, 3);
 		Graphics.CopyTexture(down.targetTexture, 0, cubemap, 2);
-	}
-
-	public void SetupCams() {
-		foreach (Camera cam in new Camera[]{front, back, right, left, up, down}) {
-			SetupCam(cam, 512);
+		if (FOV != WideAnglePlugin.Instance.FieldOfView.Value) {
+			FOV = Utility.ExpDecay(FOV, WideAnglePlugin.Instance.FieldOfView.Value, 5f, Time.deltaTime);
 		}
 	}
 
-	private void SetupCam(Camera cam, int size) {
-		RenderTexture rt = new RenderTexture(size, size, 16);
-		cam.targetTexture = rt;
-		cam.depth = orig.depth;
-		cam.clearFlags = orig.clearFlags;
-		cam.cullingMask = orig.cullingMask;
-		cam.depthTextureMode = orig.depthTextureMode;
+	public float FOV {
+		get {
+			return screen.GetFloat("_FOV");
+		}
+		internal set {
+			screen.SetFloat("_FOV", value);
+		}
+	}
+
+	public float FarClipPlane {
+		get {
+			return field;
+		}
+		internal set {
+			foreach (var camera in new Camera[]{ front, back, left, right, down, up }) {
+				camera.farClipPlane = value;
+			}
+			field = value;
+		}
 	}
 }
