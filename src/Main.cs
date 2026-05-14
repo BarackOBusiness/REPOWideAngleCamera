@@ -3,6 +3,7 @@ using System.IO;
 using System.Reflection;
 using BepInEx;
 using BepInEx.Configuration;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Rendering.PostProcessing;
@@ -17,6 +18,7 @@ public class WideAnglePlugin : BaseUnityPlugin
 	internal static AssetBundle Bundle { get; private set; }
 
 	internal ConfigEntry<float> FieldOfView;
+	internal ConfigEntry<bool> RenderBackface;
 
 	private void Awake() {
 		Instance = this;
@@ -31,6 +33,12 @@ public class WideAnglePlugin : BaseUnityPlugin
 			145f,
 			new ConfigDescription("The angle of visibility of the major axis of your display in degrees, generally this will be horizontal FOV.", new AcceptableValueRange<float>(60f, 300f))
 		);
+		RenderBackface = Config.Bind(
+			"",
+			"Render Backface",
+			true,
+			"Whether or not to render the back view, affects performance and maximum possible FOV"
+		);
 
 		try {
 			string bundleDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
@@ -38,6 +46,7 @@ public class WideAnglePlugin : BaseUnityPlugin
 
 			Hooks.Hook(Logger);
 			SceneManager.sceneLoaded += OnSceneLoad;
+			this.Config.SettingChanged += OnSettingChanged;
 
 			Logger.LogInfo($"{MyPluginInfo.PLUGIN_GUID} v{MyPluginInfo.PLUGIN_VERSION} has loaded!");
 		} catch (Exception err) {
@@ -90,5 +99,16 @@ public class WideAnglePlugin : BaseUnityPlugin
 		// Fix up extras caused by the great instantiation of 2026
 		Destroy(Camera.main.GetComponent<PostProcessLayer>());
 		CameraGlitch.Instance = Camera.main.transform.Find("Glitch").GetComponent<CameraGlitch>();
+	}
+
+	private void OnSettingChanged(object sender, SettingChangedEventArgs arg) {
+		if (SemiFunc.IsMainMenu() || SemiFunc.RunIsLobbyMenu() || !(bool)CameraManager.Instance)
+			return;
+
+		// Work remains to be done
+		// if (arg.ChangedSetting == this.RenderBackface) {
+		// 	CameraManager.Instance.RenderBackface = RenderBackface.Value;
+		// }
+		Logger.LogInfo($"Config update event; sender is {sender}|{sender.ToString()}, arg is {arg.ChangedSetting.ToString()}");
 	}
 }

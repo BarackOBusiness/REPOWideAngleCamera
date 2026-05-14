@@ -47,20 +47,24 @@ public class CameraManager : MonoBehaviour {
 
 	private void Update() {
 		Graphics.CopyTexture(front.targetTexture, 0, cubemap, 4);
-		Graphics.CopyTexture(back.targetTexture, 0, cubemap, 5);
+		if (back.gameObject.activeSelf)
+			Graphics.CopyTexture(back.targetTexture, 0, cubemap, 5);
 		Graphics.CopyTexture(right.targetTexture, 0, cubemap, 0);
 		Graphics.CopyTexture(left.targetTexture, 0, cubemap, 1);
 		Graphics.CopyTexture(up.targetTexture, 0, cubemap, 2);
 		Graphics.CopyTexture(down.targetTexture, 0, cubemap, 3);
-		if (FOV != WideAnglePlugin.Instance.FieldOfView.Value) {
-			FOV = Utility.ExpDecay(FOV, WideAnglePlugin.Instance.FieldOfView.Value, 5f, Time.deltaTime);
+	}
+
+	public bool RenderBackface {
+		get;
+		internal set {
+			back.gameObject.SetActive(value);
+			field = value;
 		}
 	}
 
 	public Projection Mode {
-		get {
-			return field;
-		}
+		get;
 		internal set {
 			switch (value) {
 				case Projection.Stereographic:
@@ -84,9 +88,7 @@ public class CameraManager : MonoBehaviour {
 	}
 
 	public float FarClipPlane {
-		get {
-			return field;
-		}
+		get;
 		internal set {
 			foreach (var camera in new Camera[]{ front, back, left, right, down, up }) {
 				camera.farClipPlane = value;
