@@ -1,8 +1,3 @@
-using System;
-using System.Reflection;
-using Mono.Cecil.Cil;
-using MonoMod.Cil;
-using MonoMod.RuntimeDetour;
 using UnityEngine;
 
 namespace WideAngleCamera;
@@ -40,10 +35,10 @@ internal static class Utility {
 				clone.localRotation = Quaternion.Euler(0f, 90f, 0f);
 				break;
 			case Orientation.Up:
-				clone.localRotation = Quaternion.Euler(270f, 0f, 0f);
+				clone.localRotation = Quaternion.Euler(90f, 0f, 0f);
 				break;
 			case Orientation.Down:
-				clone.localRotation = Quaternion.Euler(90f, 0f, 0f);
+				clone.localRotation = Quaternion.Euler(270f, 0f, 0f);
 				break;
 		}
 
@@ -54,7 +49,7 @@ internal static class Utility {
 		return clone;
 	}
 
-	public static GameObject Projector() {
+	internal static GameObject Projector() {
 		Mesh m = new Mesh();
 
         m.vertices = new Vector3[]
@@ -75,7 +70,6 @@ internal static class Utility {
         m.triangles = new int[] { 2, 1, 0 };
         m.RecalculateBounds();
 
-        // Now create the projector which will be returned
         var obj = new GameObject("Projector Screen");
         var mf = obj.AddComponent<MeshFilter>();
         var mr = obj.AddComponent<MeshRenderer>();
@@ -91,93 +85,33 @@ internal static class Utility {
         return obj;
 	}
 
+	public static Vector3 WorldToViewportPoint(Transform cam, Vector3 worldPoint) {
+		// Transform to local space, this is the ray to the position
+		Vector3 p = cam.InverseTransformPoint(worldPoint);
+		float r = p.magnitude;
+
+		// FOV scaling factor
+		float s = 1.0f / Mathf.Tan(CameraManager.Instance.FOV * Mathf.Deg2Rad * 0.25f);
+
+		// Map ray onto stereographic image plane
+		// using the magnitude in place of 1 in the denominator cancels the need to normalize it apparently
+		float u = s * (p.x / (r + p.z));
+		float v = s * (p.y / (r + p.z));
+		// Aspect ratio correction
+		v /= Camera.main.aspect;
+
+		// Figure out whether the position is 'behind' the camera or not
+		bool behind = (r + p.z) <= 0f;
+
+		// Viewport coordinates + r as depth analogue
+		return new Vector3(
+			0.5f + u * 0.5f,
+			0.5f + v * 0.5f,
+			behind? -r : r
+		);
+	}
+
 	public static float ExpDecay(float a, float b, float decay, float dt) {
 		return b+(a-b)*Mathf.Exp(-decay*dt);
-	}
-}
-
-internal static class Hooks {
-	private const BindingFlags Public = BindingFlags.Public;
-	private const BindingFlags Private = BindingFlags.NonPublic;
-	private const BindingFlags Instance = BindingFlags.Instance;
-
-	internal static ILHook _RunManagerHook;
-	internal static ILHook _RenderTextureMainHook;
-	internal static ILHook _EnvironmentDirectorHook;
-
-	internal static void Hook() {
-		_RunManagerHook = new ILHook(GetMethod<RunManager>("ChangeLevel", Public | Instance), RunManager_ChangeLevel);
-		_RenderTextureMainHook = new ILHook(GetMethod<RenderTextureMain>("Start", Private | Instance), RenderTextureMain_Start);
-		_EnvironmentDirectorHook = new ILHook(GetMethod<EnvironmentDirector>("Setup", Public | Instance), EnvironmentDirector_Setup);
-	}
-
-	internal static void Unhook() {
-		_RunManagerHook.Dispose();
-		_RenderTextureMainHook.Dispose();
-		_EnvironmentDirectorHook.Dispose();
-	}
-
-	private static MethodInfo GetMethod<T>(string name, BindingFlags flags) {
-		return typeof(T).GetMethod(name, flags);
-	}
-
-	// Trigger an event whenever a level is loading
-	private static void RunManager_ChangeLevel(ILContext il) {
-		ILCursor cursor = new ILCursor(il).Goto(0);
-				
-		if (cursor.TryGotoNext(moveType: MoveType.After,
-			x => x.MatchLdarg(0),
-			x => x.MatchCall<RunManager>("RestartScene")
-		)) {
-			cursor.EmitDelegate(() => {
-				WideAnglePlugin.levelLoaded.Invoke();
-			});
-		}
-	}
-
-	// Update camera list construction to account for all the new ones that shouldn't be appended
-	private static void RenderTextureMain_Start(ILContext il) {
-		ILCursor cursor = new ILCursor(il).Goto(0);
-
-		if (cursor.TryGotoNext(moveType: MoveType.After,
-			x => x.MatchBr(out _),
-			x => x.MatchLdloc(0),
-			x => x.MatchLdloc(1),
-			x => x.MatchLdelemRef(),
-			x => x.MatchStloc(2)
-		)) {
-			cursor.RemoveRange(4);
-			cursor.Emit(OpCodes.Ldarg_0);
-			cursor.Emit(OpCodes.Ldloc_2);
-			cursor.EmitDelegate((RenderTextureMain self, Camera cam) => {
-				if (cam.transform.parent != null && (cam.transform.parent.name == "Camera Main" || cam.transform.parent.name == "Tilt")) {
-					self.cameras.Add(cam);
-				}
-			});
-		}
-	}
-
-	// EnvironmentDirector sets far clip distance of subcameras instead of main one
-	private static void EnvironmentDirector_Setup(ILContext il) {
-		ILCursor cursor = new ILCursor(il).Goto(0);
-
-		if (cursor.TryGotoNext(
-			x => x.MatchLdarg(0),
-			x => x.MatchLdfld<EnvironmentDirector>("MainCamera"),
-			x => x.MatchCall<UnityEngine.RenderSettings>("get_fogEndDistance"),
-			x => x.MatchLdcR4(1),
-			x => x.MatchAdd(),
-			x => x.MatchCallvirt<Camera>("set_farClipPlane")
-		)) {
-			cursor.Index++;
-			cursor.RemoveRange(5);
-			cursor.EmitDelegate((EnvironmentDirector self) => {
-				if (CameraManager.Instance != null) {
-					CameraManager.Instance.FarClipPlane = RenderSettings.fogEndDistance + 1f;
-				} else {
-					self.MainCamera.farClipPlane = RenderSettings.fogEndDistance + 1f;
-				}
-			});
-		}
 	}
 }
