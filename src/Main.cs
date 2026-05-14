@@ -13,22 +13,17 @@ namespace WideAngleCamera;
 [BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
 public class WideAnglePlugin : BaseUnityPlugin
 {
-	internal static WideAnglePlugin Instance { get; private set; } = null!;
-	internal static AssetBundle Bundle { get; private set; } = null!;
-
-	internal static UnityEvent levelLoaded;
+	internal static WideAnglePlugin Instance { get; private set; }
+	internal static AssetBundle Bundle { get; private set; }
 
 	internal ConfigEntry<float> FieldOfView;
-	internal ConfigEntry<bool> DebugActive;
-
-	private bool shouldSetup = false;
 
 	private void Awake() {
 		Instance = this;
 
 		// Prevent the plugin from being destroyed
-		this.transform.parent = null;
-		this.gameObject.hideFlags = HideFlags.HideAndDontSave;
+		transform.parent = null;
+		gameObject.hideFlags = HideFlags.HideAndDontSave;
 
 		FieldOfView = Config.Bind(
 			"",
@@ -36,28 +31,13 @@ public class WideAnglePlugin : BaseUnityPlugin
 			145f,
 			new ConfigDescription("The angle of visibility of the major axis of your display in degrees, generally this will be horizontal FOV.", new AcceptableValueRange<float>(60f, 300f))
 		);
-		DebugActive = Config.Bind(
-			"Debug",
-			"Projection Enabled",
-			true,
-			"Whether or not to enable the camera projection"
-		);
 
 		try {
 			string bundleDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 			Bundle = AssetBundle.LoadFromFile($"{bundleDir}\\WideAngleAssets");
 
-			// Event gets invoked via code injection into RunManager::ChangeLevel
-			// it tells us when we're entering gameplay and should modify the camera
-			levelLoaded = new UnityEvent();
-			levelLoaded.AddListener(() => {
-				shouldSetup = true;
-			});
-
-			// The scene will reload following our level change event, this is the modification time
+			Hooks.Hook(Logger);
 			SceneManager.sceneLoaded += OnSceneLoad;
-
-			Hooks.Hook();
 
 			Logger.LogInfo($"{MyPluginInfo.PLUGIN_GUID} v{MyPluginInfo.PLUGIN_VERSION} has loaded!");
 		} catch (Exception err) {
@@ -66,23 +46,24 @@ public class WideAnglePlugin : BaseUnityPlugin
 	}
 
 	private void OnDestroy() {
+		SceneManager.sceneLoaded -= OnSceneLoad;
 		Hooks.Unhook();
 	}
 
 	// What the fuck, all roads lead to the scenemanager
 	private void OnSceneLoad(Scene scene, LoadSceneMode mode) {
-		if (!shouldSetup || !DebugActive.Value || scene.name == "Reload" || SemiFunc.RunIsLobbyMenu()) return;
+		if (scene.name == "Reload" || SemiFunc.IsMainMenu() || SemiFunc.RunIsLobbyMenu()) return;
 		// Camera setup
 		Transform camParent = Camera.main.transform;
 		var front = Utility.CopyCamera(camParent.gameObject, Utility.Orientation.Front);
-		var back = Utility.CopyCamera(camParent.gameObject, Utility.Orientation.Back);
-		var left = Utility.CopyCamera(camParent.gameObject, Utility.Orientation.Left);
-		var right = Utility.CopyCamera(camParent.gameObject, Utility.Orientation.Right);
-		var down = Utility.CopyCamera(camParent.gameObject, Utility.Orientation.Down);
-		var up = Utility.CopyCamera(camParent.gameObject, Utility.Orientation.Up);
+		var back = Utility.CopyCamera(front.gameObject, Utility.Orientation.Back);
+		var left = Utility.CopyCamera(front.gameObject, Utility.Orientation.Left);
+		var right = Utility.CopyCamera(front.gameObject, Utility.Orientation.Right);
+		var down = Utility.CopyCamera(front.gameObject, Utility.Orientation.Down);
+		var up = Utility.CopyCamera(front.gameObject, Utility.Orientation.Up);
 		// Create and setup fullscreen triangle
 		GameObject screen = Utility.Projector();
-		screen.GetComponent<MeshRenderer>().material = new Material(Bundle.LoadAsset<Shader>("Assets/Stereographic/Projection.shader"));
+		screen.GetComponent<MeshRenderer>().material = new Material(Bundle.LoadAsset<Shader>("Assets/Shaders/Stereographic.shader"));
 		screen.transform.SetParent(camParent, false);
 		screen.transform.localPosition = new Vector3(0f, 0f, 0.5f);
 		screen.layer = 31;
@@ -109,8 +90,5 @@ public class WideAnglePlugin : BaseUnityPlugin
 		// Fix up extras caused by the great instantiation of 2026
 		Destroy(Camera.main.GetComponent<PostProcessLayer>());
 		CameraGlitch.Instance = Camera.main.transform.Find("Glitch").GetComponent<CameraGlitch>();
-
-		// Set this flag back in case we go to the main menu
-		shouldSetup = false;
 	}
 }
