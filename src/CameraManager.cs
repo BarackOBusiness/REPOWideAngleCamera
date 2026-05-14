@@ -38,8 +38,8 @@ public class CameraManager : MonoBehaviour {
 		Graphics.CopyTexture(back.targetTexture, 0, cubemap, 5);
 		Graphics.CopyTexture(right.targetTexture, 0, cubemap, 0);
 		Graphics.CopyTexture(left.targetTexture, 0, cubemap, 1);
-		Graphics.CopyTexture(up.targetTexture, 0, cubemap, 3);
-		Graphics.CopyTexture(down.targetTexture, 0, cubemap, 2);
+		Graphics.CopyTexture(up.targetTexture, 0, cubemap, 2);
+		Graphics.CopyTexture(down.targetTexture, 0, cubemap, 3);
 		if (FOV != WideAnglePlugin.Instance.FieldOfView.Value) {
 			FOV = Utility.ExpDecay(FOV, WideAnglePlugin.Instance.FieldOfView.Value, 5f, Time.deltaTime);
 		}
