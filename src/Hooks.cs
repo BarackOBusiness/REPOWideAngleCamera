@@ -29,6 +29,10 @@ internal static class Hooks {
 		_hooks.Add(new ILHook(GetMethod<ValuableDiscoverGraphic>("RendererBoundsInScreenSpace", Private | Instance), ValuableDiscoverGraphic_RendererBoundsInScreenSpace));
 		_logger.LogInfo("Hooking `SemiFunc::OnScreen`");
 		_hooks.Add(new ILHook(typeof(SemiFunc).GetMethod("OnScreen", Public | Static), SemiFunc_OnScreen));
+		_logger.LogInfo("Hooking `CrystalBallValuable::StateActive`");
+		_hooks.Add(new ILHook(GetMethod<CrystalBallValuable>("StateActive", Private | Instance), CrystalBall_StateActive));
+		_logger.LogInfo("Hooking `CrystalBallValuable::StateIdle`");
+		_hooks.Add(new ILHook(GetMethod<CrystalBallValuable>("StateIdle", Private | Instance), CrystalBall_StateIdle));
 	}
 
 	internal static void Unhook() {
@@ -146,6 +150,34 @@ internal static class Hooks {
 					point = Camera.main.WorldToScreenPoint(position);
 				}
 				return point;
+			});
+		}
+	}
+
+	private static void CrystalBall_StateActive(ILContext il) {
+		ILCursor cursor = new ILCursor(il);
+
+		if (cursor.TryGotoNext(MoveType.After,
+			x => x.MatchLdarg(0),
+			x => x.MatchLdfld<CrystalBallValuable>("activeLocal"),
+			x => x.MatchBrtrue(out _)
+		)) {
+			cursor.EmitDelegate(() => {
+				CameraManager.Instance.Mode = CameraManager.Projection.Equisolid;
+			});
+		}
+	}
+
+	private static void CrystalBall_StateIdle(ILContext il) {
+		ILCursor cursor = new ILCursor(il);
+
+		if (cursor.TryGotoNext(MoveType.After,
+			x => x.MatchLdarg(0),
+			x => x.MatchLdfld<CrystalBallValuable>("activeLocal"),
+			x => x.MatchBrfalse(out _)
+		)) {
+			cursor.EmitDelegate(() => {
+				CameraManager.Instance.Mode = CameraManager.Projection.Stereographic;
 			});
 		}
 	}

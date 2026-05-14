@@ -5,6 +5,14 @@ namespace WideAngleCamera;
 public class CameraManager : MonoBehaviour {
 	public static CameraManager Instance;
 
+	public enum Projection {
+		Stereographic,
+		Equisolid
+	}
+
+	private Shader stereographic;
+	private Shader equisolid;
+
 	private Camera front;
 	private Camera back;
 	private Camera left;
@@ -31,6 +39,10 @@ public class CameraManager : MonoBehaviour {
 		screen = transform.parent.Find("Projector Screen").GetComponent<MeshRenderer>().material;
 		screen.mainTexture = cubemap;
 		FOV = WideAnglePlugin.Instance.FieldOfView.Value;
+
+		// Cache these for switching
+		stereographic = screen.shader;
+		equisolid = WideAnglePlugin.Bundle.LoadAsset<Shader>("Assets/Shaders/Equisolid.shader");
 	}
 
 	private void Update() {
@@ -42,6 +54,23 @@ public class CameraManager : MonoBehaviour {
 		Graphics.CopyTexture(down.targetTexture, 0, cubemap, 3);
 		if (FOV != WideAnglePlugin.Instance.FieldOfView.Value) {
 			FOV = Utility.ExpDecay(FOV, WideAnglePlugin.Instance.FieldOfView.Value, 5f, Time.deltaTime);
+		}
+	}
+
+	public Projection Mode {
+		get {
+			return field;
+		}
+		internal set {
+			switch (value) {
+				case Projection.Stereographic:
+					screen.shader = stereographic;
+					break;
+				case Projection.Equisolid:
+					screen.shader = equisolid;
+					break;
+			}
+			field = value;
 		}
 	}
 
