@@ -53,6 +53,10 @@ public class CameraManager : MonoBehaviour {
 		Graphics.CopyTexture(left.targetTexture, 0, cubemap, 1);
 		Graphics.CopyTexture(up.targetTexture, 0, cubemap, 2);
 		Graphics.CopyTexture(down.targetTexture, 0, cubemap, 3);
+		float configFOV = WideAnglePlugin.Instance.FieldOfView.Value;
+		if (FOV != configFOV) {
+			FOV = Utility.ExpDecay(FOV, configFOV, 5f, Time.deltaTime);
+		}
 	}
 
 	public bool RenderBackface {
