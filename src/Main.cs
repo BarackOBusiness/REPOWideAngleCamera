@@ -3,9 +3,7 @@ using System.IO;
 using System.Reflection;
 using BepInEx;
 using BepInEx.Configuration;
-using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.Events;
 using UnityEngine.Rendering.PostProcessing;
 using UnityEngine.SceneManagement;
 
@@ -31,7 +29,7 @@ public class WideAnglePlugin : BaseUnityPlugin
 			"",
 			"Field of View",
 			145f,
-			new ConfigDescription("The angle of visibility of the major axis of your display in degrees, generally this will be horizontal FOV.", new AcceptableValueRange<float>(60f, 300f))
+			new ConfigDescription("The angle of visibility of the major axis of your display in degrees, generally this will be horizontal FOV.", new AcceptableValueRange<float>(60f, 270f))
 		);
 		RenderBackface = Config.Bind(
 			"",
@@ -55,6 +53,7 @@ public class WideAnglePlugin : BaseUnityPlugin
 	}
 
 	private void OnDestroy() {
+		this.Config.SettingChanged -= OnSettingChanged;
 		SceneManager.sceneLoaded -= OnSceneLoad;
 		Hooks.Unhook();
 	}
@@ -86,7 +85,7 @@ public class WideAnglePlugin : BaseUnityPlugin
 		down.transform.SetParent(cam.transform, false);
 		up.transform.SetParent(cam.transform, false);
 		cam.transform.SetParent(camParent, false);
-		cam.AddComponent<CameraManager>();
+		cam.AddComponent<CameraManager>().RenderBackface = RenderBackface.Value;
 
 		// Configure main camera to view only triangle
 		Camera.main.nearClipPlane = 0.0f;
@@ -106,9 +105,7 @@ public class WideAnglePlugin : BaseUnityPlugin
 			return;
 
 		// Work remains to be done
-		// if (arg.ChangedSetting == this.RenderBackface) {
-		// 	CameraManager.Instance.RenderBackface = RenderBackface.Value;
-		// }
-		Logger.LogInfo($"Config update event; sender is {sender}|{sender.ToString()}, arg is {arg.ChangedSetting.ToString()}");
+		if (arg.ChangedSetting == RenderBackface)
+			CameraManager.Instance.RenderBackface = RenderBackface.Value;
 	}
 }
