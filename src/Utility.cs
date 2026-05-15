@@ -87,27 +87,29 @@ internal static class Utility {
 
 	public static Vector3 WorldToViewportPoint(Transform cam, Vector3 worldPoint) {
 		// Transform to local space, this is the ray to the position
-		Vector3 p = cam.InverseTransformPoint(worldPoint);
-		float r = p.magnitude;
+		Vector3 ray = cam.InverseTransformPoint(worldPoint);
+		// The projection point in stereographic projection is the north pole (0, 0, 1)
+		ray.z = -ray.z;
+		Vector3 p = ray.normalized;
 
 		// FOV scaling factor
 		float s = 1.0f / Mathf.Tan(CameraManager.Instance.FOV * Mathf.Deg2Rad * 0.25f);
 
 		// Map ray onto stereographic image plane
-		// using the magnitude in place of 1 in the denominator cancels the need to normalize it apparently
-		float u = s * (p.x / (r + p.z));
-		float v = s * (p.y / (r + p.z));
-		// Aspect ratio correction
-		v /= Camera.main.aspect;
-
-		// Figure out whether the position is 'behind' the camera or not
-		bool behind = (r + p.z) <= 0f;
+		float u = s * (p.x / (1f - p.z));
+		float v = s * (p.y / (1f - p.z));
+		// Aspect ratio correction, since this is the inverse of the shader code we multiply
+		if (Camera.main.aspect > 1.0) {
+			v *= Camera.main.aspect;
+		} else {
+			u *= Camera.main.aspect;
+		}
 
 		// Viewport coordinates + r as depth analogue
 		return new Vector3(
 			0.5f + u * 0.5f,
 			0.5f + v * 0.5f,
-			behind? -r : r
+			ray.magnitude
 		);
 	}
 
