@@ -1,5 +1,5 @@
 {
-  "name": "Wide_Angle_Camera",
+  "name": "REPO_Wide_Angle_Camera",
   "description": "Allows for very high fields of view by implementing curvilinear camera projections.",
   "version_number": "1.0.0",
   "dependencies": [
