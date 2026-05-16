@@ -21,8 +21,6 @@ internal static class Hooks {
 		_logger = logger;
 		_hooks = new List<ILHook>();
 		// Now start patching all the methods
-		_logger.LogInfo("Hooking `RenderTextureMain::Start`");
-		_hooks.Add(new ILHook(GetMethod<RenderTextureMain>("Start", Private | Instance), RenderTextureMain_Start));
 		_logger.LogInfo("Hooking `EnvironmentDirector::FogLogic`");
 		_hooks.Add(new ILHook(GetMethod<EnvironmentDirector>("FogLogic", Private | Instance), EnvironmentDirector_FogLogic));
 		_logger.LogInfo("Hooking `ValuableDiscoverGraphic::RendererBoundsInScreenSpace`");
@@ -43,28 +41,6 @@ internal static class Hooks {
 
 	private static MethodInfo GetMethod<T>(string name, BindingFlags flags) {
 		return typeof(T).GetMethod(name, flags);
-	}
-
-	// Update camera list construction to account for all the new ones that shouldn't be appended
-	private static void RenderTextureMain_Start(ILContext il) {
-		ILCursor cursor = new ILCursor(il).Goto(0);
-
-		if (cursor.TryGotoNext(MoveType.After,
-			x => x.MatchBr(out _),
-			x => x.MatchLdloc(1),
-			x => x.MatchLdloc(2),
-			x => x.MatchLdelemRef(),
-			x => x.MatchStloc(3),
-			x => x.MatchLdarg(0)
-		)) {
-			cursor.RemoveRange(3);
-			cursor.Emit(OpCodes.Ldloc_3);
-			cursor.EmitDelegate((RenderTextureMain self, Camera cam) => {
-				if (cam.transform.parent != null && (cam.transform.parent.name == "Camera Main" || cam.transform.parent.name == "Tilt")) {
-					self.cameras.Add(cam);
-				}
-			});
-		}
 	}
 
 	// EnvironmentDirector sets far clip distance of subcameras instead of main one

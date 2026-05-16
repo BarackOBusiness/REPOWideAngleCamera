@@ -3,6 +3,7 @@ using System.IO;
 using System.Reflection;
 using BepInEx;
 using BepInEx.Configuration;
+using HarmonyLib;
 using UnityEngine;
 using UnityEngine.Rendering.PostProcessing;
 using UnityEngine.SceneManagement;
@@ -14,6 +15,7 @@ public class WideAnglePlugin : BaseUnityPlugin
 {
 	internal static WideAnglePlugin Instance { get; private set; }
 	internal static AssetBundle Bundle { get; private set; }
+	private Harmony Patcher;
 
 	internal const int Resolution = 512;
 
@@ -45,6 +47,9 @@ public class WideAnglePlugin : BaseUnityPlugin
 			Bundle = AssetBundle.LoadFromFile($"{bundleDir}\\WideAngleAssets");
 
 			Hooks.Hook(Logger);
+			Patcher = new Harmony(MyPluginInfo.PLUGIN_GUID);
+			Patcher.PatchAll(typeof(Patches));
+			Logger.LogInfo("Harmony instance created; patched `RenderTextureMain::Start` and `SpectateCamera::Awake`");
 			SceneManager.sceneLoaded += OnSceneLoad;
 			this.Config.SettingChanged += OnSettingChanged;
 
@@ -57,6 +62,7 @@ public class WideAnglePlugin : BaseUnityPlugin
 	private void OnDestroy() {
 		this.Config.SettingChanged -= OnSettingChanged;
 		SceneManager.sceneLoaded -= OnSceneLoad;
+		Patcher.UnpatchSelf();
 		Hooks.Unhook();
 	}
 
