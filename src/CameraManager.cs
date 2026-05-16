@@ -33,7 +33,7 @@ public class CameraManager : MonoBehaviour {
 		down = transform.Find("Down").GetComponent<Camera>();
 		up = transform.Find("Up").GetComponent<Camera>();
 
-		cubemap = new RenderTexture(512, 512, 16);
+		cubemap = new RenderTexture(WideAnglePlugin.Resolution, WideAnglePlugin.Resolution, 16);
 		cubemap.dimension = UnityEngine.Rendering.TextureDimension.Cube;
 
 		screen = transform.parent.Find("Projector Screen").GetComponent<MeshRenderer>().material;

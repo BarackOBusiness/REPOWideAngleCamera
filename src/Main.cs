@@ -15,6 +15,8 @@ public class WideAnglePlugin : BaseUnityPlugin
 	internal static WideAnglePlugin Instance { get; private set; }
 	internal static AssetBundle Bundle { get; private set; }
 
+	internal const int Resolution = 512;
+
 	internal ConfigEntry<float> FieldOfView;
 	internal ConfigEntry<bool> RenderBackface;
 

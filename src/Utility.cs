@@ -42,7 +42,7 @@ internal static class Utility {
 				break;
 		}
 
-		RenderTexture rt = new RenderTexture(512, 512, 16);
+		RenderTexture rt = new RenderTexture(WideAnglePlugin.Resolution, WideAnglePlugin.Resolution, 16);
 		clone.GetComponent<Camera>().targetTexture = rt;
 		clone.GetComponent<Camera>().fieldOfView = 90.0f;
 
