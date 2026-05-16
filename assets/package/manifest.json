@@ -1,0 +1,9 @@
+{
+  "name": "Wide_Angle_Camera",
+  "description": "Allows for very high fields of view by implementing curvilinear camera projections.",
+  "version_number": "1.0.0",
+  "dependencies": [
+    "BepInEx-BepInExPack-5.4.2305"
+  ],
+  "website_url": "https://github.com/BarackOBusiness/REPOWideAngleCamera"
+}
